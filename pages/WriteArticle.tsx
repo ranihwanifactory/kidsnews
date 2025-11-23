@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { collection, addDoc, doc, getDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Category } from '../types';
@@ -9,7 +9,7 @@ import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2, Arro
 
 const WriteArticle: React.FC = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
+  const history = useHistory();
   const { id } = useParams<{ id: string }>(); // If id exists, it's edit mode
   
   const [title, setTitle] = useState('');
@@ -58,7 +58,7 @@ const WriteArticle: React.FC = () => {
           // Permission check: Admin or Author
           if (currentUser?.role !== 'admin' && currentUser?.uid !== data.authorId) {
             alert("수정 권한이 없습니다.");
-            navigate('/');
+            history.push('/');
             return;
           }
 
@@ -73,7 +73,7 @@ const WriteArticle: React.FC = () => {
           setYoutubeUrl(data.youtubeUrl || '');
         } else {
           alert("존재하지 않는 기사입니다.");
-          navigate('/');
+          history.push('/');
         }
       } catch (error) {
         console.error("Error fetching article:", error);
@@ -86,7 +86,7 @@ const WriteArticle: React.FC = () => {
     if (currentUser) {
       fetchArticleForEdit();
     }
-  }, [id, currentUser, navigate]);
+  }, [id, currentUser, history]);
 
   // Initial Permission Check
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'reporter')) {
@@ -97,7 +97,7 @@ const WriteArticle: React.FC = () => {
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">권한이 없습니다</h2>
         <p className="text-gray-600">기사 작성은 기자단만 가능해요. 관리자에게 문의해주세요.</p>
-        <button onClick={() => navigate('/')} className="mt-6 text-primary underline">홈으로 돌아가기</button>
+        <button onClick={() => history.push('/')} className="mt-6 text-primary underline">홈으로 돌아가기</button>
       </div>
     );
   }
@@ -178,7 +178,7 @@ const WriteArticle: React.FC = () => {
         alert("기사가 성공적으로 등록되었습니다!");
       }
       
-      navigate(id ? `/article/${id}` : '/');
+      history.push(id ? `/article/${id}` : '/');
       
     } catch (error: any) {
       console.error("Error saving article: ", error);
@@ -192,7 +192,7 @@ const WriteArticle: React.FC = () => {
     <div className="max-w-4xl mx-auto py-10 px-4">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-           <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-700">
+           <button onClick={() => history.goBack()} className="text-gray-500 hover:text-gray-700">
              <ArrowLeft />
            </button>
            <h1 className="text-3xl font-bold text-gray-900 font-serif">
@@ -335,7 +335,7 @@ const WriteArticle: React.FC = () => {
         <div className="flex justify-end gap-4 pt-4 border-t">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => history.goBack()}
             className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
             disabled={isSubmitting}
           >

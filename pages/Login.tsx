@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Newspaper, Mail, Lock, User, Loader2, Chrome } from 'lucide-react';
 
@@ -12,7 +12,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   
   const { loginWithEmail, signupWithEmail, loginWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const history = useHistory();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ const Login: React.FC = () => {
         if (!name.trim()) throw new Error("이름을 입력해주세요.");
         await signupWithEmail(email, password, name);
       }
-      navigate('/');
+      history.push('/');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/invalid-credential') {
@@ -48,7 +48,7 @@ const Login: React.FC = () => {
       setError('');
       setLoading(true);
       await loginWithGoogle();
-      navigate('/');
+      history.push('/');
     } catch (err: any) {
       setError("구글 로그인에 실패했습니다.");
       setLoading(false);

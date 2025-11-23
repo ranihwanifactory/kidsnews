@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Article, ADMIN_EMAIL, Category } from '../types';
@@ -17,7 +17,7 @@ interface UserData {
 
 const AdminDashboard: React.FC = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
+  const history = useHistory();
   
   const [articles, setArticles] = useState<Article[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -29,7 +29,7 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     if (currentUser && currentUser.email !== ADMIN_EMAIL) {
-       navigate('/');
+       history.push('/');
        return;
     }
 
@@ -73,7 +73,7 @@ const AdminDashboard: React.FC = () => {
     if (currentUser) {
       fetchData();
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, history]);
 
   const handleDeleteArticle = async (articleId: string) => {
     if (window.confirm("정말로 이 기사를 삭제하시겠습니까?")) {
@@ -88,7 +88,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleEditArticle = (articleId: string) => {
-    navigate(`/edit/${articleId}`);
+    history.push(`/edit/${articleId}`);
   };
 
   const handleToggleReporter = async (user: UserData) => {

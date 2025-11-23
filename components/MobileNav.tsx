@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { Home, Grid, PenTool, User, X, LogOut, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -8,7 +8,7 @@ import { Category } from '../types';
 
 const MobileNav: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const navigate = useNavigate();
+  const history = useHistory();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -34,7 +34,7 @@ const MobileNav: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    history.push('/');
   };
 
   const isActive = (path: string) => location.pathname === path;
