@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Article, Comment } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,12 +40,17 @@ const ArticleDetail: React.FC = () => {
         }
 
         // 2. Fetch Comments
-        const q = query(collection(db, "comments"), where("articleId", "==", id), orderBy("createdAt", "desc"));
+        // Note: Using client-side sorting to avoid requiring a composite index in Firestore (articleId + createdAt)
+        const q = query(collection(db, "comments"), where("articleId", "==", id));
         const querySnapshot = await getDocs(q);
         const fetchedComments: Comment[] = [];
         querySnapshot.forEach((doc) => {
           fetchedComments.push({ id: doc.id, ...doc.data() } as Comment);
         });
+        
+        // Sort comments by newest first
+        fetchedComments.sort((a, b) => b.createdAt - a.createdAt);
+        
         setComments(fetchedComments);
 
       } catch (err) {
