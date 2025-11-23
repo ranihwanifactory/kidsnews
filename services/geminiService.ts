@@ -1,13 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY || ''; 
-
 // Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateArticleSummary = async (content: string): Promise<string> => {
-  if (!apiKey) return "API Key not configured.";
-  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -21,8 +17,6 @@ export const generateArticleSummary = async (content: string): Promise<string> =
 };
 
 export const polishArticle = async (content: string): Promise<string> => {
-  if (!apiKey) return content;
-
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

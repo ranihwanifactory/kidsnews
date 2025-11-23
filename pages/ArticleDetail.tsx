@@ -122,24 +122,24 @@ const ArticleDetail: React.FC = () => {
   const youtubeId = article.youtubeUrl ? getYoutubeVideoId(article.youtubeUrl) : null;
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-8">
-      <div className="relative h-64 md:h-96">
+    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-4 md:my-8">
+      <div className="relative h-60 md:h-96">
         <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://placehold.co/800x600?text=No+Image')} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="absolute bottom-0 left-0 p-6 md:p-10 text-white">
-          <span className="px-3 py-1 bg-secondary rounded-full text-sm font-bold mb-4 inline-block">{displayCategory}</span>
-          <h1 className="text-3xl md:text-5xl font-serif font-bold mb-2 leading-tight">{article.title}</h1>
+        <div className="absolute bottom-0 left-0 p-4 md:p-10 text-white">
+          <span className="px-3 py-1 bg-secondary rounded-full text-xs md:text-sm font-bold mb-2 md:mb-4 inline-block">{displayCategory}</span>
+          <h1 className="text-2xl md:text-5xl font-serif font-bold mb-2 leading-tight">{article.title}</h1>
         </div>
       </div>
 
-      <div className="p-6 md:p-10">
+      <div className="p-4 md:p-10">
         <div className="flex items-center justify-between border-b border-gray-100 pb-6 mb-8">
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold overflow-hidden">
+             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold overflow-hidden flex-shrink-0">
                 {article.authorName.charAt(0)}
              </div>
              <div>
-               <p className="font-bold text-gray-900">{article.authorName} 기자</p>
+               <p className="font-bold text-gray-900 text-sm md:text-base">{article.authorName} 기자</p>
                <p className="text-xs text-gray-500 flex items-center gap-1">
                  <Clock size={12} />
                  {new Date(article.createdAt).toLocaleDateString()}
@@ -148,14 +148,14 @@ const ArticleDetail: React.FC = () => {
           </div>
           <div className="flex gap-2">
             {canEdit && (
-              <button onClick={handleEdit} className="flex items-center gap-2 text-white bg-gray-800 hover:bg-gray-700 transition px-4 py-2 rounded-full">
-                <Edit size={18} />
-                <span className="text-sm font-medium">수정</span>
+              <button onClick={handleEdit} className="flex items-center gap-2 text-white bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 md:px-4 md:py-2 rounded-full">
+                <Edit size={16} />
+                <span className="text-xs md:text-sm font-medium">수정</span>
               </button>
             )}
-            <button onClick={handleShare} className="flex items-center gap-2 text-gray-600 hover:text-primary transition bg-gray-50 px-4 py-2 rounded-full">
-              <Share2 size={18} />
-              <span className="text-sm font-medium">공유하기</span>
+            <button onClick={handleShare} className="flex items-center gap-2 text-gray-600 hover:text-primary transition bg-gray-50 px-3 py-1.5 md:px-4 md:py-2 rounded-full">
+              <Share2 size={16} />
+              <span className="text-xs md:text-sm font-medium">공유</span>
             </button>
           </div>
         </div>
@@ -178,12 +178,12 @@ const ArticleDetail: React.FC = () => {
           </div>
         )}
 
-        <div className="prose prose-lg prose-indigo max-w-none mb-12 text-gray-800 leading-relaxed">
+        <div className="prose prose-base md:prose-lg prose-indigo max-w-none mb-12 text-gray-800 leading-relaxed">
            <div dangerouslySetInnerHTML={{ __html: article.content }} />
         </div>
 
-        <div className="bg-gray-50 p-6 rounded-xl">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        <div className="bg-gray-50 p-4 md:p-6 rounded-xl">
+          <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <MessageCircle className="text-primary" />
             댓글 <span className="text-primary">{comments.length}</span>
           </h3>
@@ -191,13 +191,13 @@ const ArticleDetail: React.FC = () => {
           {currentUser ? (
             <form onSubmit={handleCommentSubmit} className="mb-8">
               <div className="flex gap-3">
-                <img src={currentUser.photoURL || "https://picsum.photos/40/40"} className="w-10 h-10 rounded-full" alt="Me"/>
+                <img src={currentUser.photoURL || "https://picsum.photos/40/40"} className="w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0" alt="Me"/>
                 <div className="flex-1">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="친구에게 고운 말을 써주세요..."
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent resize-none h-24 text-sm"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent resize-none h-20 md:h-24 text-sm"
                   />
                   <div className="flex justify-end mt-2">
                     <button 
@@ -221,15 +221,15 @@ const ArticleDetail: React.FC = () => {
             </form>
           ) : (
             <div className="text-center py-6 bg-white rounded-lg border border-gray-200 mb-6">
-              <p className="text-gray-500 mb-2">댓글을 작성하려면 로그인이 필요해요.</p>
+              <p className="text-gray-500 mb-2 text-sm">댓글을 작성하려면 로그인이 필요해요.</p>
             </div>
           )}
 
           <div className="space-y-6">
             {comments.map((comment) => (
               <div key={comment.id} className="flex gap-3">
-                <img src={comment.userPhoto || "https://picsum.photos/40/40"} className="w-10 h-10 rounded-full border border-gray-200" alt={comment.userName} />
-                <div className="flex-1 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <img src={comment.userPhoto || "https://picsum.photos/40/40"} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-200 flex-shrink-0" alt={comment.userName} />
+                <div className="flex-1 bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-100">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-sm text-gray-900">{comment.userName}</span>
                     <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
