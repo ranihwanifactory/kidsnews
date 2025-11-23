@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogOut, PenTool, Shield, Newspaper } from 'lucide-react';
+import { Menu, X, User, LogOut, PenTool, Shield, Newspaper } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Category } from '../types';
 
 const Navbar: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const navigate = useNavigate();
 
@@ -35,17 +36,17 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-40 border-b-4 border-primary">
+    <nav className="bg-white shadow-md sticky top-0 z-50 border-b-4 border-primary">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 md:h-20">
-          <div className="flex items-center w-full justify-center md:justify-start">
+        <div className="flex justify-between h-20">
+          <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-              <Newspaper className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-              <div className="flex flex-col items-center md:items-start">
-                <span className="font-serif font-bold text-lg md:text-xl text-gray-900 tracking-tight">
+              <Newspaper className="h-8 w-8 text-primary" />
+              <div className="flex flex-col">
+                <span className="font-serif font-bold text-xl text-gray-900 tracking-tight">
                   우리동네 <span className="text-primary">어린이신문</span>
                 </span>
-                <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest hidden md:block">Kids Local News</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-widest">Kids Local News</span>
               </div>
             </Link>
           </div>
@@ -90,7 +91,7 @@ const Navbar: React.FC = () => {
                     />
                     <span className="text-sm font-semibold">{currentUser.displayName}</span>
                   </button>
-                  <div className="absolute right-0 w-48 mt-2 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                  <div className="absolute right-0 w-48 mt-2 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
                     <button 
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -111,8 +112,47 @@ const Navbar: React.FC = () => {
               </button>
             )}
           </div>
+
+          <div className="flex items-center md:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-600 hover:text-gray-900 p-2">
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-white border-t border-gray-100">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">홈</Link>
+            {categories.map((cat) => (
+              <Link 
+                key={cat.id} 
+                to={`/category/${cat.id}`} 
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+              >
+                {cat.name}
+              </Link>
+            ))}
+            
+            {currentUser ? (
+              <>
+                 {(currentUser.role === 'admin' || currentUser.role === 'reporter') && (
+                  <Link to="/write" className="block px-3 py-2 rounded-md text-base font-medium text-secondary hover:bg-amber-50">기사 쓰기</Link>
+                 )}
+                 {currentUser.role === 'admin' && (
+                  <Link to="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-gray-800 hover:bg-gray-100">관리자 메뉴</Link>
+                 )}
+                <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50">로그아웃</button>
+              </>
+            ) : (
+              <button onClick={handleLoginClick} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-primary hover:bg-indigo-50">로그인</button>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 };
