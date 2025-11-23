@@ -15,6 +15,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
     day: 'numeric',
   });
 
+  const displayCategory = article.categoryName || article.category || "일반";
+
   if (featured) {
     return (
       <div className="group relative overflow-hidden rounded-2xl shadow-lg h-full min-h-[400px] bg-gray-900">
@@ -26,7 +28,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         <div className="absolute bottom-0 left-0 p-8 w-full">
           <span className="inline-block px-3 py-1 bg-secondary text-white text-xs font-bold rounded-full mb-3">
-            {article.category}
+            {displayCategory}
           </span>
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-3 leading-tight drop-shadow-md">
             <Link to={`/article/${article.id}`} className="hover:underline decoration-2 decoration-secondary underline-offset-4">
@@ -55,7 +57,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
         />
         <div className="absolute top-3 left-3">
            <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-primary text-xs font-bold rounded-md shadow-sm">
-            {article.category}
+            {displayCategory}
           </span>
         </div>
       </Link>

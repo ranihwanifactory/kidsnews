@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ArticleCategory } from '../types';
+import { Category } from '../types';
 import { generateArticleSummary, polishArticle } from '../services/geminiService';
 import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 
@@ -13,7 +13,8 @@ const WriteArticle: React.FC = () => {
   const { id } = useParams<{ id: string }>(); // If id exists, it's edit mode
   
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<string>(ArticleCategory.LOCAL_NEWS);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
   const [imageUrl, setImageUrl] = useState('https://picsum.photos/800/600');
@@ -21,6 +22,25 @@ const WriteArticle: React.FC = () => {
   const [isAiWorking, setIsAiWorking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Fetch Categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const q = query(collection(db, "categories"), orderBy("createdAt", "asc"));
+        const snapshot = await getDocs(q);
+        const fetchedCats: Category[] = [];
+        snapshot.forEach(doc => fetchedCats.push({ id: doc.id, ...doc.data() } as Category));
+        setCategories(fetchedCats);
+        if (fetchedCats.length > 0 && !selectedCategoryId) {
+           setSelectedCategoryId(fetchedCats[0].id);
+        }
+      } catch (e) {
+        console.error("Error fetching categories", e);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Fetch article data if in edit mode
   useEffect(() => {
@@ -42,7 +62,10 @@ const WriteArticle: React.FC = () => {
           }
 
           setTitle(data.title);
-          setCategory(data.category);
+          // Prefer categoryId if exists, else match by name or default
+          if (data.categoryId) {
+            setSelectedCategoryId(data.categoryId);
+          }
           setContent(data.content);
           setSummary(data.summary);
           setImageUrl(data.imageUrl);
@@ -108,6 +131,14 @@ const WriteArticle: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
+    if (!selectedCategoryId) {
+       alert("카테고리를 선택해주세요. 카테고리가 없다면 관리자에게 요청하세요.");
+       return;
+    }
+
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    const categoryName = selectedCategory ? selectedCategory.name : "일반";
+
     setIsSubmitting(true);
     try {
       if (id) {
@@ -115,11 +146,12 @@ const WriteArticle: React.FC = () => {
         const docRef = doc(db, "articles", id);
         await updateDoc(docRef, {
           title,
-          category,
+          categoryId: selectedCategoryId,
+          categoryName: categoryName,
+          category: categoryName, // Backward compat
           content,
           summary,
           imageUrl,
-          // Do not update authorId or createdAt
           updatedAt: Date.now()
         });
         alert("기사가 수정되었습니다!");
@@ -127,7 +159,9 @@ const WriteArticle: React.FC = () => {
         // Create new article
         await addDoc(collection(db, "articles"), {
           title,
-          category,
+          categoryId: selectedCategoryId,
+          categoryName: categoryName,
+          category: categoryName, // Backward compat
           content,
           summary,
           imageUrl,
@@ -144,16 +178,7 @@ const WriteArticle: React.FC = () => {
       
     } catch (error: any) {
       console.error("Error saving article: ", error);
-      
-      if (error.code === 'permission-denied') {
-        alert(
-          "오류: 저장 권한이 없습니다.\n\n" +
-          "관리자(개발자)는 Firebase Console > Firestore Database > Rules 탭에서\n" +
-          "규칙을 업데이트 해주세요."
-        );
-      } else {
-        alert("오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
-      }
+      alert("오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
     } finally {
       setIsSubmitting(false);
     }
@@ -205,15 +230,21 @@ const WriteArticle: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2 border"
-              >
-                {Object.values(ArticleCategory).map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+              {categories.length > 0 ? (
+                <select
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
+                  className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2 border"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-red-500 text-sm border p-2 rounded bg-red-50">
+                  등록된 카테고리가 없습니다. 관리자 대시보드에서 먼저 카테고리를 추가해주세요.
+                </div>
+              )}
             </div>
           </div>
 

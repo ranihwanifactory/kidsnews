@@ -106,6 +106,7 @@ const ArticleDetail: React.FC = () => {
 
   // Check update permission: Admin or Original Author (if reporter)
   const canEdit = currentUser && (currentUser.role === 'admin' || (currentUser.role === 'reporter' && currentUser.uid === article.authorId));
+  const displayCategory = article.categoryName || article.category || "일반";
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-8">
@@ -113,7 +114,7 @@ const ArticleDetail: React.FC = () => {
         <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://placehold.co/800x600?text=No+Image')} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6 md:p-10 text-white">
-          <span className="px-3 py-1 bg-secondary rounded-full text-sm font-bold mb-4 inline-block">{article.category}</span>
+          <span className="px-3 py-1 bg-secondary rounded-full text-sm font-bold mb-4 inline-block">{displayCategory}</span>
           <h1 className="text-3xl md:text-5xl font-serif font-bold mb-2 leading-tight">{article.title}</h1>
         </div>
       </div>

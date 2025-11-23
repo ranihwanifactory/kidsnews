@@ -1,12 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut, PenTool, Shield, Newspaper } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Category } from '../types';
 
 const Navbar: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const navigate = useNavigate();
+
+  // Fetch categories dynamically
+  useEffect(() => {
+    const q = query(collection(db, "categories"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const cats: Category[] = [];
+      snapshot.forEach((doc) => {
+        cats.push({ id: doc.id, ...doc.data() } as Category);
+      });
+      setCategories(cats);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -35,8 +53,17 @@ const Navbar: React.FC = () => {
 
           <div className="hidden md:flex items-center space-x-4">
             <Link to="/" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">홈</Link>
-            <Link to="/category/local" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">우리동네 소식</Link>
-            <Link to="/category/school" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">학교 이야기</Link>
+            
+            {/* Dynamic Categories */}
+            {categories.map((cat) => (
+              <Link 
+                key={cat.id} 
+                to={`/category/${cat.id}`} 
+                className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+              >
+                {cat.name}
+              </Link>
+            ))}
             
             {currentUser ? (
               <div className="flex items-center gap-3 ml-4">
@@ -99,8 +126,16 @@ const Navbar: React.FC = () => {
         <div className="md:hidden bg-white border-t border-gray-100">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">홈</Link>
-            <Link to="/category/local" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">우리동네 소식</Link>
-            <Link to="/category/school" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">학교 이야기</Link>
+            {categories.map((cat) => (
+              <Link 
+                key={cat.id} 
+                to={`/category/${cat.id}`} 
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+              >
+                {cat.name}
+              </Link>
+            ))}
             
             {currentUser ? (
               <>

@@ -1,107 +1,100 @@
 import React, { useEffect, useState } from 'react';
-import { Article } from '../types';
+import { Article, Category } from '../types';
 import ArticleCard from '../components/ArticleCard';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-
-// Mock data for when DB is empty
-const MOCK_ARTICLES: Article[] = [
-  {
-    id: '1',
-    title: '우리 학교 급식이 달라졌어요!',
-    summary: '이번 학기부터 시작된 유기농 급식 프로젝트, 학생들의 반응이 뜨겁습니다. 맛도 좋고 건강도 챙기는 새로운 식단표를 공개합니다.',
-    content: '<p>본문 내용...</p>',
-    category: '학교 이야기',
-    imageUrl: 'https://picsum.photos/800/600?random=1',
-    authorId: 'admin',
-    authorName: '김철수',
-    createdAt: Date.now(),
-    views: 120,
-    tags: ['급식', '건강']
-  },
-  {
-    id: '2',
-    title: '동네 도서관, 어린이 전용 공간 개관',
-    summary: '조용히 책만 읽는 도서관은 가라! 누워서 보고, 이야기하며 보는 어린이들을 위한 꿈의 도서관이 우리 동네에 문을 열었습니다.',
-    content: '<p>본문 내용...</p>',
-    category: '우리동네 소식',
-    imageUrl: 'https://picsum.photos/800/600?random=2',
-    authorId: 'admin',
-    authorName: '이영희',
-    createdAt: Date.now() - 10000000,
-    views: 85,
-    tags: ['도서관', '독서']
-  },
-  {
-    id: '3',
-    title: '주말 축구 교실 모집 안내',
-    summary: '매주 토요일 아침, 친구들과 함께 땀 흘리며 축구를 배워보세요. 초보자도 환영합니다.',
-    content: '<p>본문 내용...</p>',
-    category: '문화/행사',
-    imageUrl: 'https://picsum.photos/800/600?random=3',
-    authorId: 'admin',
-    authorName: '박지성',
-    createdAt: Date.now() - 20000000,
-    views: 45,
-    tags: ['스포츠', '축구']
-  },
-  {
-    id: '4',
-    title: '과학관 견학 보고서: 로봇을 만나다',
-    summary: '지난주 다녀온 국립과학관 견학 후기. 춤추는 로봇부터 인공지능 체험까지, 미래의 과학자를 꿈꾸는 친구들의 이야기.',
-    content: '<p>본문 내용...</p>',
-    category: '과학/탐구',
-    imageUrl: 'https://picsum.photos/800/600?random=4',
-    authorId: 'admin',
-    authorName: '최과학',
-    createdAt: Date.now() - 30000000,
-    views: 200,
-    tags: ['과학', '로봇']
-  },
-];
+import { useParams } from 'react-router-dom';
 
 const Home: React.FC = () => {
+  const { category } = useParams<{ category: string }>(); // This represents the category ID
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
 
   useEffect(() => {
     const fetchArticles = async () => {
+      setLoading(true);
+      setArticles([]);
+      setCurrentCategoryName('');
+
       try {
-        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"), limit(10));
+        let q;
+        let categoryName = '';
+
+        if (category) {
+          // If a category ID is present, fetch the category name first
+          try {
+            const catDoc = await getDoc(doc(db, "categories", category));
+            if (catDoc.exists()) {
+              categoryName = (catDoc.data() as Category).name;
+            } else {
+              // Fallback if category doc doesn't exist but URL has param
+              categoryName = "카테고리"; 
+            }
+          } catch (e) {
+            console.error("Error fetching category info:", e);
+          }
+          setCurrentCategoryName(categoryName);
+
+          // Filter articles by categoryId
+          // Note: Composite index might be needed for 'categoryId' + 'createdAt'.
+          // For simplicity/robustness without index, we can just query by category and sort in memory if needed,
+          // or try specific index query.
+          // Let's try simple where clause.
+          q = query(
+            collection(db, "articles"), 
+            where("categoryId", "==", category)
+            // orderBy("createdAt", "desc") // Uncomment if composite index is created
+          );
+        } else {
+          // Default home view
+          q = query(collection(db, "articles"), orderBy("createdAt", "desc"), limit(20));
+        }
+
         const querySnapshot = await getDocs(q);
-        const fetchedArticles: Article[] = [];
+        let fetchedArticles: Article[] = [];
         querySnapshot.forEach((doc) => {
           fetchedArticles.push({ id: doc.id, ...doc.data() } as Article);
         });
 
-        if (fetchedArticles.length === 0) {
-          console.log("No articles found in DB, using mock data.");
-          setArticles(MOCK_ARTICLES);
-        } else {
-          setArticles(fetchedArticles);
+        // Client-side sort if filtered by category (to avoid needing composite index immediately)
+        if (category) {
+          fetchedArticles.sort((a, b) => b.createdAt - a.createdAt);
         }
+
+        setArticles(fetchedArticles);
       } catch (error) {
-        console.error("Error fetching articles, check Firestore permissions:", error);
-        setArticles(MOCK_ARTICLES);
+        console.error("Error fetching articles:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchArticles();
-  }, []);
+  }, [category]);
 
   if (loading) {
     return <div className="flex justify-center items-center h-96"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
   }
 
-  const featuredArticle = articles[0];
-  const standardArticles = articles.slice(1);
+  // If we are in a category view, just show grid
+  // If home, show hero + grid
+  const isHome = !category;
+  const featuredArticle = isHome ? articles[0] : null;
+  const standardArticles = isHome ? articles.slice(1) : articles;
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
-      {/* Hero Section */}
-      {featuredArticle && (
+      {/* Category Title Header */}
+      {category && (
+         <div className="text-center py-8">
+           <span className="text-primary text-sm font-bold uppercase tracking-wider">Category</span>
+           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mt-2">{currentCategoryName}</h1>
+         </div>
+      )}
+
+      {/* Hero Section (Only on Home) */}
+      {isHome && featuredArticle && (
         <section className="h-[500px] md:h-[600px] w-full">
           <ArticleCard article={featuredArticle} featured />
         </section>
@@ -111,18 +104,20 @@ const Home: React.FC = () => {
       <section>
         <div className="flex items-center justify-between mb-6 border-b-2 border-gray-100 pb-2">
           <h2 className="text-2xl font-bold text-gray-900 font-serif border-b-4 border-primary inline-block pb-2 -mb-3">
-            최신 뉴스
+            {category ? `${currentCategoryName} 소식` : '최신 뉴스'}
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {standardArticles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-        {standardArticles.length === 0 && !featuredArticle && (
-          <div className="text-center py-20 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p className="text-gray-500">등록된 기사가 없습니다.</p>
-          </div>
+        
+        {articles.length > 0 || (isHome && featuredArticle) ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {standardArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} />
+            ))}
+            </div>
+        ) : (
+             <div className="text-center py-20 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <p className="text-gray-500">등록된 기사가 없습니다.</p>
+             </div>
         )}
       </section>
       

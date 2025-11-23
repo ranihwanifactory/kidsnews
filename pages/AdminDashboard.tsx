@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Article, ADMIN_EMAIL } from '../types';
-import { Trash2, ShieldAlert, Users, Newspaper, UserCheck, UserX, Edit } from 'lucide-react';
+import { Article, ADMIN_EMAIL, Category } from '../types';
+import { Trash2, ShieldAlert, Users, Newspaper, UserCheck, UserX, Edit, List, Plus } from 'lucide-react';
 
 interface UserData {
   uid: string;
@@ -21,8 +21,11 @@ const AdminDashboard: React.FC = () => {
   
   const [articles, setArticles] = useState<Article[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'articles' | 'users'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'users' | 'categories'>('articles');
 
   useEffect(() => {
     if (currentUser && currentUser.email !== ADMIN_EMAIL) {
@@ -51,6 +54,15 @@ const AdminDashboard: React.FC = () => {
         });
         setUsers(fetchedUsers);
 
+        // Fetch Categories
+        const catsQ = query(collection(db, "categories"), orderBy("createdAt", "asc"));
+        const catsSnap = await getDocs(catsQ);
+        const fetchedCats: Category[] = [];
+        catsSnap.forEach((doc) => {
+           fetchedCats.push({ id: doc.id, ...doc.data() } as Category);
+        });
+        setCategories(fetchedCats);
+
       } catch (error) {
         console.error("Error fetching data for admin:", error);
       } finally {
@@ -70,11 +82,7 @@ const AdminDashboard: React.FC = () => {
         setArticles(articles.filter(a => a.id !== articleId));
       } catch (error: any) {
         console.error("Error deleting:", error);
-        if (error.code === 'permission-denied') {
-          alert("삭제 권한이 없습니다. Firebase Rules를 확인해주세요.");
-        } else {
-          alert("삭제 실패: " + error.message);
-        }
+        alert("삭제 실패: " + error.message);
       }
     }
   };
@@ -97,11 +105,38 @@ const AdminDashboard: React.FC = () => {
         await updateDoc(doc(db, "users", user.uid), { role: newRole });
         setUsers(users.map(u => u.uid === user.uid ? { ...u, role: newRole } : u));
       } catch (error: any) {
-        console.error("Error updating role:", error);
         alert("권한 변경 실패: " + error.message);
       }
     }
   };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!newCategoryName.trim()) return;
+
+    try {
+      const docRef = await addDoc(collection(db, "categories"), {
+        name: newCategoryName,
+        createdAt: Date.now()
+      });
+      setCategories([...categories, { id: docRef.id, name: newCategoryName, createdAt: Date.now() }]);
+      setNewCategoryName('');
+      alert("카테고리가 추가되었습니다.");
+    } catch (error: any) {
+      alert("카테고리 추가 실패: " + error.message);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if(window.confirm("이 카테고리를 삭제하시겠습니까? 해당 카테고리에 속한 기사는 분류되지 않음 상태가 될 수 있습니다.")) {
+      try {
+        await deleteDoc(doc(db, "categories", id));
+        setCategories(categories.filter(c => c.id !== id));
+      } catch (error: any) {
+        alert("카테고리 삭제 실패: " + error.message);
+      }
+    }
+  }
 
   if (!currentUser || currentUser.role !== 'admin') {
     return null;
@@ -123,10 +158,10 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
         <button
           onClick={() => setActiveTab('articles')}
-          className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition ${
+          className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition whitespace-nowrap ${
             activeTab === 'articles' ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -134,11 +169,19 @@ const AdminDashboard: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition ${
+          className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition whitespace-nowrap ${
             activeTab === 'users' ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
           <Users size={18} /> 회원 관리
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition whitespace-nowrap ${
+            activeTab === 'categories' ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <List size={18} /> 카테고리 관리
         </button>
       </div>
 
@@ -169,7 +212,7 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                        {article.category}
+                        {article.categoryName || article.category}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -202,7 +245,6 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow overflow-hidden animate-fade-in">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-bold">회원 목록 ({users.length})</h2>
-            <p className="text-sm text-gray-500">기자 권한을 가진 회원만 기사를 작성할 수 있습니다.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -224,7 +266,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{user.displayName}</div>
-                          <div className="text-xs text-gray-400">가입일: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '정보 없음'}</div>
                         </div>
                       </div>
                     </td>
@@ -269,6 +310,73 @@ const AdminDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'categories' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           <div className="lg:col-span-1 bg-white rounded-xl shadow p-6">
+             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+               <Plus size={20} className="text-primary"/> 새 카테고리 추가
+             </h3>
+             <form onSubmit={handleAddCategory} className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">카테고리 이름</label>
+                 <input 
+                   type="text" 
+                   value={newCategoryName}
+                   onChange={(e) => setNewCategoryName(e.target.value)}
+                   className="w-full border-gray-300 rounded-lg p-3 shadow-sm focus:ring-primary focus:border-primary border"
+                   placeholder="예: 학교 급식 소식"
+                   required
+                 />
+               </div>
+               <button type="submit" className="w-full bg-primary text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
+                 추가하기
+               </button>
+             </form>
+           </div>
+           
+           <div className="lg:col-span-2 bg-white rounded-xl shadow overflow-hidden">
+             <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold">카테고리 목록</h3>
+             </div>
+             <table className="min-w-full divide-y divide-gray-200">
+               <thead className="bg-gray-50">
+                 <tr>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">생성일</th>
+                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                 </tr>
+               </thead>
+               <tbody className="bg-white divide-y divide-gray-200">
+                  {categories.map((cat) => (
+                    <tr key={cat.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 font-medium text-gray-900">{cat.name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                         {cat.createdAt ? new Date(cat.createdAt).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="text-red-500 hover:text-red-700 p-2"
+                          title="삭제"
+                        >
+                          <Trash2 size={18}/>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {categories.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                        등록된 카테고리가 없습니다. 왼쪽에서 추가해주세요.
+                      </td>
+                    </tr>
+                  )}
+               </tbody>
+             </table>
+           </div>
         </div>
       )}
     </div>
