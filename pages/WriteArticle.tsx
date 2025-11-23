@@ -80,9 +80,8 @@ const WriteArticle: React.FC = () => {
       if (error.code === 'permission-denied') {
         alert(
           "오류: 쓰기 권한이 없습니다.\n\n" +
-          "Firebase Console > Firestore Database > Rules 탭에서\n" +
-          "규칙을 다음과 같이 수정해보세요:\n\n" +
-          "allow read, write: if request.auth != null;"
+          "관리자(개발자)는 Firebase Console > Firestore Database > Rules 탭에서\n" +
+          "규칙을 업데이트 해주세요."
         );
       } else {
         alert("오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../firebase';
 import { UserProfile, ADMIN_EMAIL } from '../types';
 
 interface AuthContextType {
@@ -25,18 +26,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
       if (user) {
-        // Determine role
         let role: 'admin' | 'reporter' | 'reader' = 'reader';
         
+        try {
+          // Check Firestore for user data to get persisted role
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+             const userData = userSnap.data();
+             role = userData.role || 'reader';
+          } else {
+             // Create user doc if not exists (First login)
+             // Default role is 'reader'
+             await setDoc(userRef, {
+               uid: user.uid,
+               email: user.email,
+               displayName: user.displayName,
+               photoURL: user.photoURL,
+               role: 'reader',
+               createdAt: Date.now()
+             });
+          }
+        } catch (error) {
+          console.error("Error fetching/creating user profile in Firestore:", error);
+          // If Firestore fails (e.g., permissions), we rely on default 'reader'
+          // unless it's the admin email.
+        }
+
+        // Hardcode Admin override for safety
         if (user.email === ADMIN_EMAIL) {
           role = 'admin';
-        } else {
-          // In a real app, we would check Firestore for 'reporter' role.
-          // For this demo, we'll assume the admin can also assign reporters, 
-          // but currently defaults to reader.
-          // To test reporter features without being admin, one could hardcode an email here.
         }
 
         setCurrentUser({

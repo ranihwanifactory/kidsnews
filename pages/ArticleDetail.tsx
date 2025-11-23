@@ -85,9 +85,9 @@ const ArticleDetail: React.FC = () => {
     } catch (err: any) {
       console.error("Error adding comment:", err);
       if (err.code === 'permission-denied') {
-        alert("댓글 작성 권한이 없습니다. Firebase Rules를 확인해주세요.");
+        alert("댓글 작성 권한이 없습니다. Firebase Console의 Rules 설정을 확인해주세요.");
       } else {
-        alert("댓글 작성에 실패했습니다.");
+        alert("댓글 작성에 실패했습니다: " + err.message);
       }
     } finally {
       setIsSubmittingComment(false);
