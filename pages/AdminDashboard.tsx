@@ -42,9 +42,13 @@ const AdminDashboard: React.FC = () => {
       try {
         await deleteDoc(doc(db, "articles", articleId));
         setArticles(articles.filter(a => a.id !== articleId));
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting:", error);
-        alert("삭제 실패");
+        if (error.code === 'permission-denied') {
+          alert("삭제 권한이 없습니다. Firebase Rules를 확인해주세요.");
+        } else {
+          alert("삭제 실패: " + error.message);
+        }
       }
     }
   };
@@ -53,7 +57,7 @@ const AdminDashboard: React.FC = () => {
     return null; // Or redirect handled in useEffect
   }
 
-  if (loading) return <div className="p-10">Loading Admin Panel...</div>;
+  if (loading) return <div className="p-10 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div></div>;
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">

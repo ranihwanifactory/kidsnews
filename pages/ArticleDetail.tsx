@@ -4,7 +4,7 @@ import { doc, getDoc, collection, addDoc, query, where, orderBy, getDocs } from 
 import { db } from '../firebase';
 import { Article, Comment } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Share2, MessageCircle, Clock } from 'lucide-react';
+import { Share2, MessageCircle, Clock, Send, Loader2 } from 'lucide-react';
 
 const ArticleDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,7 @@ const ArticleDetail: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     const fetchArticleAndComments = async () => {
@@ -27,7 +28,6 @@ const ArticleDetail: React.FC = () => {
         if (docSnap.exists()) {
           setArticle({ id: docSnap.id, ...docSnap.data() } as Article);
         } else {
-           // If not found in DB, try to check mock (usually we wouldn't do this in prod)
            setError("기사를 찾을 수 없습니다.");
         }
 
@@ -66,8 +66,9 @@ const ArticleDetail: React.FC = () => {
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !newComment.trim() || !id) return;
+    if (!currentUser || !newComment.trim() || !id || isSubmittingComment) return;
 
+    setIsSubmittingComment(true);
     const commentData: Omit<Comment, 'id'> = {
       articleId: id,
       userId: currentUser.uid,
@@ -81,19 +82,25 @@ const ArticleDetail: React.FC = () => {
       const docRef = await addDoc(collection(db, "comments"), commentData);
       setComments([{ id: docRef.id, ...commentData }, ...comments]);
       setNewComment('');
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error adding comment:", err);
-      alert("댓글 작성에 실패했습니다.");
+      if (err.code === 'permission-denied') {
+        alert("댓글 작성 권한이 없습니다. Firebase Rules를 확인해주세요.");
+      } else {
+        alert("댓글 작성에 실패했습니다.");
+      }
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
-  if (loading) return <div className="p-10 text-center">Loading...</div>;
+  if (loading) return <div className="p-10 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div></div>;
   if (error || !article) return <div className="p-10 text-center text-red-500">{error || "기사가 없습니다."}</div>;
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-8">
       <div className="relative h-64 md:h-96">
-        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />
+        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://placehold.co/800x600?text=No+Image')} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6 md:p-10 text-white">
           <span className="px-3 py-1 bg-secondary rounded-full text-sm font-bold mb-4 inline-block">{article.category}</span>
@@ -104,8 +111,7 @@ const ArticleDetail: React.FC = () => {
       <div className="p-6 md:p-10">
         <div className="flex items-center justify-between border-b border-gray-100 pb-6 mb-8">
           <div className="flex items-center gap-3">
-             {/* Author Avatar Placeholder if not present */}
-             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold">
+             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold overflow-hidden">
                 {article.authorName.charAt(0)}
              </div>
              <div>
@@ -122,13 +128,10 @@ const ArticleDetail: React.FC = () => {
           </button>
         </div>
 
-        {/* Article Content */}
         <div className="prose prose-lg prose-indigo max-w-none mb-12 text-gray-800 leading-relaxed">
-           {/* Render HTML safely - In a real app, use DOMPurify */}
            <div dangerouslySetInnerHTML={{ __html: article.content }} />
         </div>
 
-        {/* Comments Section */}
         <div className="bg-gray-50 p-6 rounded-xl">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <MessageCircle className="text-primary" />
@@ -147,8 +150,20 @@ const ArticleDetail: React.FC = () => {
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent resize-none h-24 text-sm"
                   />
                   <div className="flex justify-end mt-2">
-                    <button type="submit" className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition">
-                      등록
+                    <button 
+                      type="submit" 
+                      disabled={isSubmittingComment}
+                      className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmittingComment ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> 등록 중...
+                        </>
+                      ) : (
+                        <>
+                          등록 <Send size={14} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

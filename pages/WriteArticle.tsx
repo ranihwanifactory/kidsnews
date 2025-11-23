@@ -5,7 +5,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ArticleCategory } from '../types';
 import { generateArticleSummary, polishArticle } from '../services/geminiService';
-import { Sparkles, PenLine, Image as ImageIcon, Save } from 'lucide-react';
+import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2 } from 'lucide-react';
 
 const WriteArticle: React.FC = () => {
   const { currentUser } = useAuth();
@@ -18,6 +18,7 @@ const WriteArticle: React.FC = () => {
   const [imageUrl, setImageUrl] = useState('https://picsum.photos/800/600');
   
   const [isAiWorking, setIsAiWorking] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check permission
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'reporter')) {
@@ -54,11 +55,14 @@ const WriteArticle: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       await addDoc(collection(db, "articles"), {
         title,
         category,
-        content, // In a real app, sanitize this or use a rich text editor output
+        content,
         summary,
         imageUrl,
         authorId: currentUser.uid,
@@ -69,9 +73,22 @@ const WriteArticle: React.FC = () => {
       });
       alert("기사가 성공적으로 등록되었습니다!");
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding article: ", error);
-      alert("오류가 발생했습니다. 다시 시도해주세요.");
+      
+      // Handle Firebase Permission Error specifically
+      if (error.code === 'permission-denied') {
+        alert(
+          "오류: 쓰기 권한이 없습니다.\n\n" +
+          "Firebase Console > Firestore Database > Rules 탭에서\n" +
+          "규칙을 다음과 같이 수정해보세요:\n\n" +
+          "allow read, write: if request.auth != null;"
+        );
+      } else {
+        alert("오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -82,6 +99,19 @@ const WriteArticle: React.FC = () => {
         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
           {currentUser.displayName} 기자
         </span>
+      </div>
+
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <AlertCircle className="h-5 w-5 text-yellow-400" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-yellow-700">
+              어린이 친구들이 읽는 신문입니다. 고운 말을 사용하고 정확한 정보를 전달해주세요.
+            </p>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -115,9 +145,9 @@ const WriteArticle: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">대표 이미지 URL</label>
-             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center h-full min-h-[150px] bg-gray-50">
+             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center h-full min-h-[150px] bg-gray-50 overflow-hidden relative">
                {imageUrl ? (
-                 <img src={imageUrl} alt="Preview" className="w-full h-32 object-cover rounded mb-2" />
+                 <img src={imageUrl} alt="Preview" className="w-full h-full object-cover rounded absolute inset-0" onError={(e) => (e.currentTarget.src = 'https://placehold.co/600x400?text=No+Image')} />
                ) : (
                  <ImageIcon className="text-gray-400 mb-2" size={32} />
                )}
@@ -125,7 +155,7 @@ const WriteArticle: React.FC = () => {
                  type="text" 
                  value={imageUrl}
                  onChange={(e) => setImageUrl(e.target.value)}
-                 className="w-full text-xs border p-1 rounded"
+                 className="w-full text-xs border p-1 rounded z-10 mt-auto bg-white/90"
                  placeholder="이미지 주소 (https://...)"
                />
              </div>
@@ -138,10 +168,10 @@ const WriteArticle: React.FC = () => {
             <button 
               type="button" 
               onClick={handleAiPolish}
-              disabled={isAiWorking}
-              className="flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition"
+              disabled={isAiWorking || !content}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition ${isAiWorking ? 'bg-gray-100 text-gray-400' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}
             >
-              <Sparkles size={12} />
+              {isAiWorking ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
               {isAiWorking ? "AI 생각중..." : "AI 문장 다듬기"}
             </button>
           </div>
@@ -161,10 +191,10 @@ const WriteArticle: React.FC = () => {
             <button 
                type="button"
                onClick={handleAiSummary}
-               disabled={isAiWorking}
-               className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition"
+               disabled={isAiWorking || !content}
+               className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition ${isAiWorking ? 'bg-gray-100 text-gray-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
             >
-              <Sparkles size={12} />
+              {isAiWorking ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
               {isAiWorking ? "AI 요약중..." : "AI 자동 요약"}
             </button>
           </div>
@@ -183,15 +213,26 @@ const WriteArticle: React.FC = () => {
             type="button"
             onClick={() => navigate('/')}
             className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+            disabled={isSubmitting}
           >
             취소
           </button>
           <button
             type="submit"
-            className="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2"
+            disabled={isSubmitting}
+            className={`px-6 py-2 bg-primary text-white rounded-lg font-bold flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-indigo-700'}`}
           >
-            <Save size={18} />
-            기사 발행하기
+            {isSubmitting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                발행 중...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                기사 발행하기
+              </>
+            )}
           </button>
         </div>
       </form>
