@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Article, ADMIN_EMAIL } from '../types';
-import { Trash2, ShieldAlert, Users, Newspaper, UserCheck, UserX } from 'lucide-react';
+import { Trash2, ShieldAlert, Users, Newspaper, UserCheck, UserX, Edit } from 'lucide-react';
 
 interface UserData {
   uid: string;
@@ -77,6 +77,10 @@ const AdminDashboard: React.FC = () => {
         }
       }
     }
+  };
+
+  const handleEditArticle = (articleId: string) => {
+    navigate(`/edit/${articleId}`);
   };
 
   const handleToggleReporter = async (user: UserData) => {
@@ -172,9 +176,14 @@ const AdminDashboard: React.FC = () => {
                       {new Date(article.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleDeleteArticle(article.id)} className="text-red-600 hover:text-red-900 flex items-center justify-end gap-1 w-full">
-                        <Trash2 size={16} /> 삭제
-                      </button>
+                      <div className="flex justify-end gap-3">
+                        <button onClick={() => handleEditArticle(article.id)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1">
+                          <Edit size={16} /> 수정
+                        </button>
+                        <button onClick={() => handleDeleteArticle(article.id)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
+                          <Trash2 size={16} /> 삭제
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

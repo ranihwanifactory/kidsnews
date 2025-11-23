@@ -4,13 +4,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut, PenTool, Shield, Newspaper } from 'lucide-react';
 
 const Navbar: React.FC = () => {
-  const { currentUser, login, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const handleLoginClick = () => {
+    navigate('/login');
   };
 
   return (
@@ -73,7 +77,7 @@ const Navbar: React.FC = () => {
               </div>
             ) : (
               <button 
-                onClick={login} 
+                onClick={handleLoginClick} 
                 className="ml-4 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-indigo-700 transition shadow-sm"
               >
                 <User size={16} />
@@ -109,7 +113,7 @@ const Navbar: React.FC = () => {
                 <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50">로그아웃</button>
               </>
             ) : (
-              <button onClick={login} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-primary hover:bg-indigo-50">로그인</button>
+              <button onClick={handleLoginClick} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-primary hover:bg-indigo-50">로그인</button>
             )}
           </div>
         </div>

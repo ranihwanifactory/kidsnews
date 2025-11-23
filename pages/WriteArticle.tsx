@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { collection, addDoc } from 'firebase/firestore';
+import { useNavigate, useParams } from 'react-router-dom';
+import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ArticleCategory } from '../types';
 import { generateArticleSummary, polishArticle } from '../services/geminiService';
-import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2 } from 'lucide-react';
+import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 
 const WriteArticle: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>(); // If id exists, it's edit mode
   
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>(ArticleCategory.LOCAL_NEWS);
@@ -19,8 +20,50 @@ const WriteArticle: React.FC = () => {
   
   const [isAiWorking, setIsAiWorking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Check permission
+  // Fetch article data if in edit mode
+  useEffect(() => {
+    const fetchArticleForEdit = async () => {
+      if (!id) return;
+      setIsLoadingData(true);
+      try {
+        const docRef = doc(db, "articles", id);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          
+          // Permission check: Admin or Author
+          if (currentUser?.role !== 'admin' && currentUser?.uid !== data.authorId) {
+            alert("수정 권한이 없습니다.");
+            navigate('/');
+            return;
+          }
+
+          setTitle(data.title);
+          setCategory(data.category);
+          setContent(data.content);
+          setSummary(data.summary);
+          setImageUrl(data.imageUrl);
+        } else {
+          alert("존재하지 않는 기사입니다.");
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("Error fetching article:", error);
+        alert("기사 정보를 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchArticleForEdit();
+    }
+  }, [id, currentUser, navigate]);
+
+  // Initial Permission Check
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'reporter')) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
@@ -30,6 +73,14 @@ const WriteArticle: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">권한이 없습니다</h2>
         <p className="text-gray-600">기사 작성은 기자단만 가능해요. 관리자에게 문의해주세요.</p>
         <button onClick={() => navigate('/')} className="mt-6 text-primary underline">홈으로 돌아가기</button>
+      </div>
+    );
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -59,27 +110,44 @@ const WriteArticle: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "articles"), {
-        title,
-        category,
-        content,
-        summary,
-        imageUrl,
-        authorId: currentUser.uid,
-        authorName: currentUser.displayName || '기자',
-        createdAt: Date.now(),
-        views: 0,
-        tags: []
-      });
-      alert("기사가 성공적으로 등록되었습니다!");
-      navigate('/');
-    } catch (error: any) {
-      console.error("Error adding article: ", error);
+      if (id) {
+        // Update existing article
+        const docRef = doc(db, "articles", id);
+        await updateDoc(docRef, {
+          title,
+          category,
+          content,
+          summary,
+          imageUrl,
+          // Do not update authorId or createdAt
+          updatedAt: Date.now()
+        });
+        alert("기사가 수정되었습니다!");
+      } else {
+        // Create new article
+        await addDoc(collection(db, "articles"), {
+          title,
+          category,
+          content,
+          summary,
+          imageUrl,
+          authorId: currentUser.uid,
+          authorName: currentUser.displayName || '기자',
+          createdAt: Date.now(),
+          views: 0,
+          tags: []
+        });
+        alert("기사가 성공적으로 등록되었습니다!");
+      }
       
-      // Handle Firebase Permission Error specifically
+      navigate(id ? `/article/${id}` : '/');
+      
+    } catch (error: any) {
+      console.error("Error saving article: ", error);
+      
       if (error.code === 'permission-denied') {
         alert(
-          "오류: 쓰기 권한이 없습니다.\n\n" +
+          "오류: 저장 권한이 없습니다.\n\n" +
           "관리자(개발자)는 Firebase Console > Firestore Database > Rules 탭에서\n" +
           "규칙을 업데이트 해주세요."
         );
@@ -94,7 +162,14 @@ const WriteArticle: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 font-serif">기사 작성하기</h1>
+        <div className="flex items-center gap-4">
+           <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-700">
+             <ArrowLeft />
+           </button>
+           <h1 className="text-3xl font-bold text-gray-900 font-serif">
+             {id ? "기사 수정하기" : "기사 작성하기"}
+           </h1>
+        </div>
         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
           {currentUser.displayName} 기자
         </span>
@@ -210,7 +285,7 @@ const WriteArticle: React.FC = () => {
         <div className="flex justify-end gap-4 pt-4 border-t">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(-1)}
             className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
             disabled={isSubmitting}
           >
@@ -224,12 +299,12 @@ const WriteArticle: React.FC = () => {
             {isSubmitting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                발행 중...
+                {id ? "수정 중..." : "발행 중..."}
               </>
             ) : (
               <>
                 <Save size={18} />
-                기사 발행하기
+                {id ? "기사 수정하기" : "기사 발행하기"}
               </>
             )}
           </button>

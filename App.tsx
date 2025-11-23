@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import ArticleDetail from './pages/ArticleDetail';
 import WriteArticle from './pages/WriteArticle';
 import AdminDashboard from './pages/AdminDashboard';
+import Login from './pages/Login';
 
 const App: React.FC = () => {
   return (
@@ -16,10 +17,12 @@ const App: React.FC = () => {
           <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/category/:category" element={<Home />} /> {/* Reusing Home for simplicity, in real app filter */}
+              <Route path="/category/:category" element={<Home />} />
               <Route path="/article/:id" element={<ArticleDetail />} />
               <Route path="/write" element={<WriteArticle />} />
+              <Route path="/edit/:id" element={<WriteArticle />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/login" element={<Login />} />
             </Routes>
           </main>
           <footer className="bg-gray-800 text-white py-8 mt-12">

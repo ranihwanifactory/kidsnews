@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Article, Comment } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Share2, MessageCircle, Clock, Send, Loader2 } from 'lucide-react';
+import { Share2, MessageCircle, Clock, Send, Loader2, Edit } from 'lucide-react';
 
 const ArticleDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [article, setArticle] = useState<Article | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -64,6 +65,12 @@ const ArticleDetail: React.FC = () => {
     }
   };
 
+  const handleEdit = () => {
+    if (id) {
+      navigate(`/edit/${id}`);
+    }
+  };
+
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !newComment.trim() || !id || isSubmittingComment) return;
@@ -97,6 +104,9 @@ const ArticleDetail: React.FC = () => {
   if (loading) return <div className="p-10 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div></div>;
   if (error || !article) return <div className="p-10 text-center text-red-500">{error || "기사가 없습니다."}</div>;
 
+  // Check update permission: Admin or Original Author (if reporter)
+  const canEdit = currentUser && (currentUser.role === 'admin' || (currentUser.role === 'reporter' && currentUser.uid === article.authorId));
+
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-8">
       <div className="relative h-64 md:h-96">
@@ -122,10 +132,18 @@ const ArticleDetail: React.FC = () => {
                </p>
              </div>
           </div>
-          <button onClick={handleShare} className="flex items-center gap-2 text-gray-600 hover:text-primary transition bg-gray-50 px-4 py-2 rounded-full">
-            <Share2 size={18} />
-            <span className="text-sm font-medium">공유하기</span>
-          </button>
+          <div className="flex gap-2">
+            {canEdit && (
+              <button onClick={handleEdit} className="flex items-center gap-2 text-white bg-gray-800 hover:bg-gray-700 transition px-4 py-2 rounded-full">
+                <Edit size={18} />
+                <span className="text-sm font-medium">수정</span>
+              </button>
+            )}
+            <button onClick={handleShare} className="flex items-center gap-2 text-gray-600 hover:text-primary transition bg-gray-50 px-4 py-2 rounded-full">
+              <Share2 size={18} />
+              <span className="text-sm font-medium">공유하기</span>
+            </button>
+          </div>
         </div>
 
         <div className="prose prose-lg prose-indigo max-w-none mb-12 text-gray-800 leading-relaxed">
