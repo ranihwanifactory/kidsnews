@@ -31,6 +31,7 @@ export interface Article {
   categoryId?: string; // New field for linking to Category collection
   categoryName?: string; // New field for display
   imageUrl: string;
+  youtubeUrl?: string; // New field for YouTube video link
   authorId: string;
   authorName: string;
   createdAt: number;

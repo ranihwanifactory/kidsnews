@@ -6,6 +6,13 @@ import { Article, Comment } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Share2, MessageCircle, Clock, Send, Loader2, Edit } from 'lucide-react';
 
+// Helper function to extract YouTube ID
+const getYoutubeVideoId = (url: string) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const ArticleDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
@@ -107,6 +114,7 @@ const ArticleDetail: React.FC = () => {
   // Check update permission: Admin or Original Author (if reporter)
   const canEdit = currentUser && (currentUser.role === 'admin' || (currentUser.role === 'reporter' && currentUser.uid === article.authorId));
   const displayCategory = article.categoryName || article.category || "일반";
+  const youtubeId = article.youtubeUrl ? getYoutubeVideoId(article.youtubeUrl) : null;
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-hidden my-8">
@@ -146,6 +154,24 @@ const ArticleDetail: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* YouTube Video Player */}
+        {youtubeId && (
+          <div className="mb-10 rounded-xl overflow-hidden shadow-lg">
+            <div className="relative pb-[56.25%] h-0">
+              <iframe 
+                src={`https://www.youtube.com/embed/${youtubeId}`} 
+                title="YouTube video player" 
+                className="absolute top-0 left-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+              ></iframe>
+            </div>
+            <div className="bg-gray-50 p-3 text-center text-xs text-gray-500">
+              관련 영상 보기
+            </div>
+          </div>
+        )}
 
         <div className="prose prose-lg prose-indigo max-w-none mb-12 text-gray-800 leading-relaxed">
            <div dangerouslySetInnerHTML={{ __html: article.content }} />

@@ -5,7 +5,7 @@ import { collection, addDoc, doc, getDoc, updateDoc, getDocs, query, orderBy } f
 import { db } from '../firebase';
 import { Category } from '../types';
 import { generateArticleSummary, polishArticle } from '../services/geminiService';
-import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Sparkles, PenLine, Image as ImageIcon, Save, AlertCircle, Loader2, ArrowLeft, Youtube } from 'lucide-react';
 
 const WriteArticle: React.FC = () => {
   const { currentUser } = useAuth();
@@ -18,6 +18,7 @@ const WriteArticle: React.FC = () => {
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
   const [imageUrl, setImageUrl] = useState('https://picsum.photos/800/600');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   
   const [isAiWorking, setIsAiWorking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +70,7 @@ const WriteArticle: React.FC = () => {
           setContent(data.content);
           setSummary(data.summary);
           setImageUrl(data.imageUrl);
+          setYoutubeUrl(data.youtubeUrl || '');
         } else {
           alert("존재하지 않는 기사입니다.");
           navigate('/');
@@ -152,6 +154,7 @@ const WriteArticle: React.FC = () => {
           content,
           summary,
           imageUrl,
+          youtubeUrl,
           updatedAt: Date.now()
         });
         alert("기사가 수정되었습니다!");
@@ -165,6 +168,7 @@ const WriteArticle: React.FC = () => {
           content,
           summary,
           imageUrl,
+          youtubeUrl,
           authorId: currentUser.uid,
           authorName: currentUser.displayName || '기자',
           createdAt: Date.now(),
@@ -214,7 +218,7 @@ const WriteArticle: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
@@ -262,6 +266,21 @@ const WriteArticle: React.FC = () => {
                  onChange={(e) => setImageUrl(e.target.value)}
                  className="w-full text-xs border p-1 rounded z-10 mt-auto bg-white/90"
                  placeholder="이미지 주소 (https://...)"
+               />
+             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">유튜브 영상 링크 (선택)</label>
+             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center h-full min-h-[150px] bg-gray-50 overflow-hidden relative">
+                <Youtube className="text-red-500 mb-2" size={32} />
+                <p className="text-xs text-gray-500 mb-2 text-center">기사 본문에 영상을 추가할 수 있어요.</p>
+               <input 
+                 type="text" 
+                 value={youtubeUrl}
+                 onChange={(e) => setYoutubeUrl(e.target.value)}
+                 className="w-full text-xs border p-1 rounded mt-auto"
+                 placeholder="https://youtube.com/watch?v=..."
                />
              </div>
           </div>
