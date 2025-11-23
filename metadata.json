@@ -1,0 +1,5 @@
+{
+  "name": "Kids Local News",
+  "description": "A vibrant, magazine-style local newspaper app for children, featuring article sharing, commenting, and reporter tools powered by Firebase and Gemini.",
+  "requestFramePermissions": []
+}
